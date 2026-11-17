@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Presença Confirmada • Casa IRIS</title>
+  <title>Confirmar Presença • Casa IRIS</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -146,16 +146,16 @@
       <div class="badge-status">✅</div>
       <h1>Presença Confirmada!</h1>
       <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando agenda em tempo real...</div>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Localizando...</span></span></div>
-        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Localizando...</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Carregando...</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
       <div class="botoes-bio">
-        <button id="btnReforcar" class="btn btn-acao-agenda" type="button" style="display:none;">✅ Confirmar na Agenda Agora</button>
+        <button id="btnConfirmarAgenda" class="btn btn-acao-agenda" type="button">✅ Confirmar Presença na Agenda</button>
         <a class="btn btn-primario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
         <a class="btn btn-secundario" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">💬 Falar conosco no WhatsApp</a>
       </div>
@@ -168,9 +168,48 @@
     </div>
   </div>
 
+  <!-- Formulário e Iframe ocultos para atravessar redirecionamento 302 do Google sem bloqueio de CORS -->
+  <iframe name="iframe_oculto_gas" id="iframe_oculto_gas" style="display:none;"></iframe>
+  <form id="form_oculto_gas" method="GET" target="iframe_oculto_gas" style="display:none;">
+    <input type="hidden" name="rota" value="registrar">
+    <input type="hidden" name="acao" value="confirmar">
+    <input type="hidden" name="c" id="inp_c" value="">
+    <input type="hidden" name="s" id="inp_s" value="">
+    <input type="hidden" name="cal" id="inp_cal" value="">
+    <input type="hidden" name="id" id="inp_id" value="">
+    <input type="hidden" name="ts" id="inp_ts" value="">
+  </form>
+
   <script>
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
+    var jaSincronizou = false;
+
+    function preencherDados(nomePac, textoDh) {
+      if (nomePac && nomePac !== "Paciente") {
+        document.getElementById('lblPaciente').innerText = nomePac;
+      }
+      if (textoDh && textoDh !== "Conforme agendado") {
+        document.getElementById('lblDataHora').innerText = textoDh;
+      }
+      var pAtual = document.getElementById('lblPaciente').innerText;
+      var dAtual = document.getElementById('lblDataHora').innerText;
+      if (pAtual !== "Carregando..." && dAtual !== "Carregando...") {
+        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pAtual + " para o atendimento de " + dAtual + ".");
+      }
+    }
+
+    function onRetornoGoogleJsonp(res) {
+      if (!res) return;
+      if (res.paciente) preencherDados(res.paciente, res.dataHora);
+      if (res.ok) {
+        jaSincronizou = true;
+        document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
+        document.getElementById('btnConfirmarAgenda').innerText = "✅ Presença Confirmada na Agenda";
+        document.getElementById('btnConfirmarAgenda').style.background = "#2e6f40";
+      }
+    }
+
     (function() {
-      const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
       const params = new URLSearchParams(window.location.search);
       const cod = params.get('c') || params.get('s') || '';
       const cal = params.get('cal') || '';
@@ -179,100 +218,40 @@
       const pacUrl = params.get('pac') || '';
       const dhUrl = params.get('dh') || '';
 
-      var sincronizado = false;
+      if (pacUrl || dhUrl) preencherDados(pacUrl, dhUrl);
 
-      function preencherDados(nomePac, textoDh) {
-        if (nomePac && nomePac !== "Paciente") {
-          document.getElementById('lblPaciente').innerText = nomePac;
+      function executarGravacaoReal() {
+        var form = document.getElementById('form_oculto_gas');
+        form.action = GAS_URL;
+        document.getElementById('inp_c').value = cod;
+        document.getElementById('inp_s').value = cod;
+        document.getElementById('inp_cal').value = cal;
+        document.getElementById('inp_id').value = id;
+        document.getElementById('inp_ts').value = ts;
+
+        // 1. Submissão nativa de formulário (imune a bloqueio CORS e redirect 302 do Google)
+        try { form.submit(); } catch (e) {}
+
+        // 2. Script JSONP paralelo para trazer o nome do paciente e o horário de volta
+        var s = document.createElement('script');
+        s.src = GAS_URL + "?rota=registrar&acao=confirmar&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod) + "&cal=" + encodeURIComponent(cal) + "&id=" + encodeURIComponent(id) + "&ts=" + encodeURIComponent(ts) + "&callback=onRetornoGoogleJsonp&_t=" + Date.now();
+        document.body.appendChild(s);
+      }
+
+      document.getElementById('iframe_oculto_gas').addEventListener('load', function() {
+        if (!jaSincronizou) {
+          document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
+          document.getElementById('btnConfirmarAgenda').innerText = "✅ Presença Confirmada na Agenda";
         }
-        if (textoDh && textoDh !== "Conforme agendado") {
-          document.getElementById('lblDataHora').innerText = textoDh;
-        }
-        var pAtual = document.getElementById('lblPaciente').innerText;
-        var dAtual = document.getElementById('lblDataHora').innerText;
-        if (pAtual !== "Localizando..." && dAtual !== "Localizando...") {
-          document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pAtual + " para o atendimento de " + dAtual + ".");
-        }
-      }
+      });
 
-      if (pacUrl || dhUrl) {
-        preencherDados(pacUrl, dhUrl);
-      }
-
-      function processarResposta(texto) {
-        if (sincronizado || !texto) return false;
-        try {
-          var res = JSON.parse(texto);
-          if (res && res.contents) {
-            res = JSON.parse(res.contents);
-          }
-          if (res && (res.ok || res.paciente)) {
-            sincronizado = true;
-            preencherDados(res.paciente, res.dataHora);
-            document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
-            document.getElementById('btnReforcar').style.display = "none";
-            return true;
-          }
-        } catch (e) {}
-        return false;
-      }
-
-      function dispararCanaisDeSincronia() {
-        if (sincronizado) return;
-
-        var urlAlvo = GAS_URL + "?rota=registrar&acao=confirmar";
-        if (cod) urlAlvo += "&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod);
-        if (cal) urlAlvo += "&cal=" + encodeURIComponent(cal);
-        if (id) urlAlvo += "&id=" + encodeURIComponent(id);
-        if (ts) urlAlvo += "&ts=" + encodeURIComponent(ts);
-        if (pacUrl) urlAlvo += "&pac=" + encodeURIComponent(pacUrl);
-        if (dhUrl) urlAlvo += "&dh=" + encodeURIComponent(dhUrl);
-        urlAlvo += "&_t=" + Date.now();
-
-        // Canal 1: Servidor Relay AllOrigins (Imune ao bloqueio do iPhone/Safari)
-        fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlAlvo))
-          .then(function(r) { return r.text(); })
-          .then(processarResposta)
-          .catch(function() {});
-
-        // Canal 2: Servidor Relay AllOrigins JSON Wrapper
-        fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(urlAlvo))
-          .then(function(r) { return r.text(); })
-          .then(processarResposta)
-          .catch(function() {});
-
-        // Canal 3: Servidor Relay CodeTabs
-        fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(urlAlvo))
-          .then(function(r) { return r.text(); })
-          .then(processarResposta)
-          .catch(function() {});
-
-        // Canal 4: Servidor Relay CorsProxy
-        fetch("https://corsproxy.io/?" + encodeURIComponent(urlAlvo))
-          .then(function(r) { return r.text(); })
-          .then(processarResposta)
-          .catch(function() {});
-
-        // Canal 5: Chamada Direta limpa sem cabeçalhos extras
-        fetch(urlAlvo, { method: "GET", credentials: "omit" })
-          .then(function(r) { return r.text(); })
-          .then(processarResposta)
-          .catch(function() {});
-      }
-
-      document.getElementById('btnReforcar').addEventListener('click', function() {
+      document.getElementById('btnConfirmarAgenda').addEventListener('click', function() {
         document.getElementById('statusSinc').innerText = "⏳ Confirmando na agenda...";
-        dispararCanaisDeSincronia();
+        executarGravacaoReal();
       });
 
       if (!navigator.webdriver && document.visibilityState !== 'prerender') {
-        dispararCanaisDeSincronia();
-        setTimeout(function() {
-          if (!sincronizado) {
-            dispararCanaisDeSincronia();
-            document.getElementById('btnReforcar').style.display = "block";
-          }
-        }, 2500);
+        executarGravacaoReal();
       }
     })();
   </script>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ausência Registrada • Casa IRIS</title>
+  <title>Presença Confirmada • Casa IRIS</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -51,8 +51,8 @@
       width: 62px;
       height: 62px;
       border-radius: 50%;
-      background: #fdf0ef;
-      border: 2px solid #f5d0ce;
+      background: #eaf4ec;
+      border: 2px solid #cfe6d4;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -60,11 +60,11 @@
       margin: -52px auto 14px;
       box-shadow: 0 6px 14px rgba(0,0,0,0.06);
     }
-    h1 { color: #b94a48; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    h1 { color: #2e6f40; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
     .texto-acolhedor { color: #57635c; font-size: 14px; line-height: 1.55; margin-bottom: 20px; }
     .card-agendamento {
-      background: #fdf0ef;
-      border: 1px solid #f5d0ce;
+      background: #eaf4ec;
+      border: 1px solid #cfe6d4;
       border-radius: 16px;
       padding: 16px;
       margin-bottom: 20px;
@@ -89,10 +89,10 @@
       font-weight: 600;
       text-decoration: none;
     }
-    .btn-reagendar {
-      background: #25d366;
+    .btn-primario {
+      background: #4a6b56;
       color: #ffffff;
-      box-shadow: 0 6px 15px rgba(37, 211, 102, 0.25);
+      box-shadow: 0 6px 15px rgba(74, 107, 86, 0.22);
     }
     .btn-secundario {
       background: #f4f6f4;
@@ -125,19 +125,19 @@
     </div>
 
     <div class="corpo">
-      <div class="badge-status">💛</div>
-      <h1>Ausência Registrada</h1>
-      <p class="texto-acolhedor">Agradecemos por nos avisar com antecedência! O cuidado contínuo faz toda a diferença.</p>
+      <div class="badge-status">✅</div>
+      <h1>Presença Confirmada!</h1>
+      <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Registrado</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Confirmado</span></span></div>
         <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Conforme agendado</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
       <div class="botoes-bio">
-        <a class="btn btn-reagendar" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">📅 Solicitar Reagendamento no WhatsApp</a>
-        <a class="btn btn-secundario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
+        <a class="btn btn-primario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
+        <a class="btn btn-secundario" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">💬 Falar conosco no WhatsApp</a>
       </div>
 
       <div class="rodape-endereco">
@@ -149,19 +149,19 @@
   </div>
 
   <script>
-    function atualizarDadosCancelamento(res) {
+    function atualizarDadosPaciente(res) {
       if (!res) return;
       if (res.paciente) document.getElementById('lblPaciente').innerText = res.paciente;
       if (res.dataHora) document.getElementById('lblDataHora').innerText = res.dataHora;
       if (res.paciente && res.dataHora) {
-        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + res.paciente + " não poderá comparecer ao atendimento de " + res.dataHora + ". Gostaria de verificar um novo horário para reagendar.");
+        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + res.paciente + " para o atendimento de " + res.dataHora + ".");
       }
     }
 
     (function() {
       const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
       const params = new URLSearchParams(window.location.search);
-      const cod = params.get('c') || params.get('n') || '';
+      const cod = params.get('c') || params.get('s') || '';
       const cal = params.get('cal') || '';
       const id = params.get('id') || '';
       const ts = params.get('ts') || '';
@@ -169,7 +169,7 @@
       const dh = params.get('dh') || '';
 
       if (pac || dh) {
-        atualizarDadosCancelamento({ paciente: pac, dataHora: dh });
+        atualizarDadosPaciente({ paciente: pac, dataHora: dh });
       }
 
       if (navigator.webdriver || document.visibilityState === 'prerender') return;
@@ -179,7 +179,7 @@
         if (jaEnviou) return;
         jaEnviou = true;
 
-        var query = "?rota=registrar&acao=cancelar&callback=atualizarDadosCancelamento";
+        var query = "?rota=registrar&acao=confirmar&callback=atualizarDadosPaciente";
         if (cod) {
           query += "&c=" + encodeURIComponent(cod);
         } else if (cal && id) {
@@ -188,11 +188,13 @@
           return;
         }
 
+        // Método 1: Script JSONP (recebe o nome do paciente e atualiza a agenda sem bloqueio de CORS)
         var s = document.createElement('script');
         s.src = GAS_URL + query + "&_t=" + Date.now();
         s.onerror = function() {
+          // Método 2 (Backup): Ping de imagem invisível caso o navegador bloqueie scripts externos
           var img = new Image();
-          img.src = GAS_URL + query.replace("&callback=atualizarDadosCancelamento", "") + "&_img=" + Date.now();
+          img.src = GAS_URL + query.replace("&callback=atualizarDadosPaciente", "") + "&_img=" + Date.now();
         };
         document.body.appendChild(s);
       }

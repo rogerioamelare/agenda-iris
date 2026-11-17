@@ -98,9 +98,6 @@
       font-size: 14.5px;
       font-weight: 600;
       text-decoration: none;
-      border: none;
-      cursor: pointer;
-      font-family: inherit;
     }
     .btn-reagendar {
       background: #25d366;
@@ -178,13 +175,17 @@
       document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pAtual + " não poderá comparecer ao atendimento de " + dAtual + ". Gostaria de verificar um novo horário para reagendar.");
     }
 
-    function onRetornoCancelamento(res) {
-      if (!res) return;
-      if (res.paciente) preencherDados(res.paciente, res.dataHora);
-      if (res.ok) {
-        canceladoOk = true;
-        document.getElementById('statusSinc').innerText = "✓ Ausência registrada na agenda da Casa IRIS";
-      }
+    function processarRetorno(texto) {
+      if (canceladoOk || !texto) return;
+      try {
+        var res = (typeof texto === "string") ? JSON.parse(texto) : texto;
+        if (res && res.contents) res = JSON.parse(res.contents);
+        if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
+        if (res && res.ok) {
+          canceladoOk = true;
+          document.getElementById('statusSinc').innerText = "✓ Ausência registrada na agenda da Casa IRIS";
+        }
+      } catch (e) {}
     }
 
     (function() {
@@ -198,8 +199,6 @@
 
       if (pacUrl || dhUrl) preencherDados(pacUrl, dhUrl);
 
-      if (navigator.webdriver || document.visibilityState === 'prerender') return;
-
       var query = "?rota=registrar&acao=cancelar" +
         "&c=" + encodeURIComponent(cod) +
         "&n=" + encodeURIComponent(cod) +
@@ -210,31 +209,36 @@
         "&h=" + encodeURIComponent(dhUrl) +
         "&_t=" + Date.now();
 
-      var urlFinal = GAS_URL + query;
+      var urlAlvo = GAS_URL + query;
 
-      // CANAL 1: Ping HTTP via Imagem
-      var imgPing = new Image();
-      imgPing.referrerPolicy = "no-referrer";
-      imgPing.src = urlFinal + "&ping=1";
+      // 1. Relay AllOrigins Raw
+      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlAlvo))
+        .then(function(r) { return r.text(); })
+        .then(processarRetorno)
+        .catch(function() {});
 
-      // CANAL 2: Script JSONP
+      // 2. Relay AllOrigins Get
+      fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(urlAlvo))
+        .then(function(r) { return r.text(); })
+        .then(processarRetorno)
+        .catch(function() {});
+
+      // 3. Relay CodeTabs
+      fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(urlAlvo))
+        .then(function(r) { return r.text(); })
+        .then(processarRetorno)
+        .catch(function() {});
+
+      // 4. Fetch GET direto sem cookies
+      fetch(urlAlvo, { method: "GET", mode: "cors", credentials: "omit", cache: "no-store" })
+        .then(function(r) { return r.text(); })
+        .then(processarRetorno)
+        .catch(function() {});
+
+      // 5. Script JSONP
       var s = document.createElement('script');
-      s.src = urlFinal + "&callback=onRetornoCancelamento";
+      s.src = urlAlvo + "&callback=processarRetorno";
       document.body.appendChild(s);
-
-      // CANAL 3: Fetch GET sem cookies
-      fetch(urlFinal, {
-        method: "GET",
-        mode: "no-cors",
-        credentials: "omit",
-        cache: "no-store"
-      }).then(function() {
-        setTimeout(function() {
-          if (!canceladoOk) {
-            document.getElementById('statusSinc').innerText = "✓ Aviso de ausência enviado para a Casa IRIS";
-          }
-        }, 1200);
-      }).catch(function() {});
     })();
   </script>
 </body>

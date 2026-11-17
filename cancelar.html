@@ -138,7 +138,7 @@
       <div class="badge-status">💛</div>
       <h1>Ausência Registrada</h1>
       <p class="texto-acolhedor">Agradecemos por nos avisar com antecedência! O cuidado contínuo faz toda a diferença.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Atualizando a agenda e carregando dados...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando agenda em tempo real...</div>
 
       <div class="card-agendamento">
         <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
@@ -196,9 +196,7 @@
         jaExecutou = true;
 
         var urlFinal = GAS_URL + "?rota=registrar&acao=cancelar&clique=sim";
-        if (cod) {
-          urlFinal += "&c=" + encodeURIComponent(cod) + "&n=" + encodeURIComponent(cod);
-        }
+        if (cod) urlFinal += "&c=" + encodeURIComponent(cod) + "&n=" + encodeURIComponent(cod);
         if (cal) urlFinal += "&cal=" + encodeURIComponent(cal);
         if (id) urlFinal += "&id=" + encodeURIComponent(id);
         if (ts) urlFinal += "&ts=" + encodeURIComponent(ts);
@@ -206,10 +204,15 @@
         if (dhUrl) urlFinal += "&dh=" + encodeURIComponent(dhUrl);
         urlFinal += "&_t=" + Date.now();
 
+        if (navigator.sendBeacon) {
+          try { navigator.sendBeacon(urlFinal); } catch (e) {}
+        }
+
         fetch(urlFinal, {
           method: "GET",
           mode: "cors",
           credentials: "omit",
+          keepalive: true,
           redirect: "follow",
           cache: "no-store"
         })
@@ -228,7 +231,8 @@
           }
         })
         .catch(function() {
-          document.getElementById('statusSinc').innerText = "✓ Aviso recebido";
+          fetch(urlFinal, { mode: "no-cors", credentials: "omit", keepalive: true });
+          document.getElementById('statusSinc').innerText = "✓ Aviso enviado à agenda";
         });
       }
 

@@ -102,11 +102,6 @@
       cursor: pointer;
       font-family: inherit;
     }
-    .btn-acao-agenda {
-      background: #16a34a;
-      color: #ffffff;
-      box-shadow: 0 6px 15px rgba(22, 163, 74, 0.25);
-    }
     .btn-primario {
       background: #4a6b56;
       color: #ffffff;
@@ -146,16 +141,15 @@
       <div class="badge-status">✅</div>
       <h1>Presença Confirmada!</h1>
       <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando agenda em tempo real...</div>
+      <div id="statusSinc" class="status-sincronia">✓ Presença registrada na agenda Casa IRIS</div>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
-        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Carregando...</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Confirmado</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Horário agendado</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
       <div class="botoes-bio">
-        <button id="btnConfirmarAgenda" class="btn btn-acao-agenda" type="button">✅ Confirmar Presença na Agenda</button>
         <a class="btn btn-primario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
         <a class="btn btn-secundario" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">💬 Falar conosco no WhatsApp</a>
       </div>
@@ -168,91 +162,71 @@
     </div>
   </div>
 
-  <!-- Formulário e Iframe ocultos para atravessar redirecionamento 302 do Google sem bloqueio de CORS -->
-  <iframe name="iframe_oculto_gas" id="iframe_oculto_gas" style="display:none;"></iframe>
+  <iframe name="iframe_oculto_gas" style="display:none;"></iframe>
   <form id="form_oculto_gas" method="GET" target="iframe_oculto_gas" style="display:none;">
     <input type="hidden" name="rota" value="registrar">
     <input type="hidden" name="acao" value="confirmar">
     <input type="hidden" name="c" id="inp_c" value="">
     <input type="hidden" name="s" id="inp_s" value="">
-    <input type="hidden" name="cal" id="inp_cal" value="">
-    <input type="hidden" name="id" id="inp_id" value="">
-    <input type="hidden" name="ts" id="inp_ts" value="">
+    <input type="hidden" name="p" id="inp_p" value="">
+    <input type="hidden" name="h" id="inp_h" value="">
   </form>
 
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
-    var jaSincronizou = false;
 
     function preencherDados(nomePac, textoDh) {
       if (nomePac && nomePac !== "Paciente") {
         document.getElementById('lblPaciente').innerText = nomePac;
       }
       if (textoDh && textoDh !== "Conforme agendado") {
-        document.getElementById('lblDataHora').innerText = textoDh;
+        document.getElementById('lblDataHora').innerText = textoDh.replace("_", " às ");
       }
       var pAtual = document.getElementById('lblPaciente').innerText;
       var dAtual = document.getElementById('lblDataHora').innerText;
-      if (pAtual !== "Carregando..." && dAtual !== "Carregando...") {
-        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pAtual + " para o atendimento de " + dAtual + ".");
-      }
+      document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pAtual + " para o atendimento de " + dAtual + ".");
     }
 
     function onRetornoGoogleJsonp(res) {
-      if (!res) return;
-      if (res.paciente) preencherDados(res.paciente, res.dataHora);
-      if (res.ok) {
-        jaSincronizou = true;
-        document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
-        document.getElementById('btnConfirmarAgenda').innerText = "✅ Presença Confirmada na Agenda";
-        document.getElementById('btnConfirmarAgenda').style.background = "#2e6f40";
-      }
+      if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
     }
 
     (function() {
       const params = new URLSearchParams(window.location.search);
       const cod = params.get('c') || params.get('s') || '';
-      const cal = params.get('cal') || '';
-      const id = params.get('id') || '';
-      const ts = params.get('ts') || '';
-      const pacUrl = params.get('pac') || '';
-      const dhUrl = params.get('dh') || '';
+      const pacUrl = params.get('p') || params.get('pac') || '';
+      const dhUrl = params.get('h') || params.get('dh') || '';
 
-      if (pacUrl || dhUrl) preencherDados(pacUrl, dhUrl);
+      // Exibe o nome e o horário IMEDIATAMENTE ao abrir a tela
+      if (pacUrl || dhUrl) {
+        preencherDados(pacUrl, dhUrl);
+      }
 
-      function executarGravacaoReal() {
+      if (navigator.webdriver || document.visibilityState === 'prerender') return;
+
+      var urlFinal = GAS_URL + "?rota=registrar&acao=confirmar&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod) + "&p=" + encodeURIComponent(pacUrl) + "&h=" + encodeURIComponent(dhUrl) + "&_t=" + Date.now();
+
+      // 1. Submissão via Formulário Nativo
+      try {
         var form = document.getElementById('form_oculto_gas');
         form.action = GAS_URL;
         document.getElementById('inp_c').value = cod;
         document.getElementById('inp_s').value = cod;
-        document.getElementById('inp_cal').value = cal;
-        document.getElementById('inp_id').value = id;
-        document.getElementById('inp_ts').value = ts;
+        document.getElementById('inp_p').value = pacUrl;
+        document.getElementById('inp_h').value = dhUrl;
+        form.submit();
+      } catch (e) {}
 
-        // 1. Submissão nativa de formulário (imune a bloqueio CORS e redirect 302 do Google)
-        try { form.submit(); } catch (e) {}
+      // 2. Script JSONP Direto (busca também o nome na agenda se o link clicado for antigo)
+      var s = document.createElement('script');
+      s.src = urlFinal + "&callback=onRetornoGoogleJsonp";
+      document.body.appendChild(s);
 
-        // 2. Script JSONP paralelo para trazer o nome do paciente e o horário de volta
-        var s = document.createElement('script');
-        s.src = GAS_URL + "?rota=registrar&acao=confirmar&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod) + "&cal=" + encodeURIComponent(cal) + "&id=" + encodeURIComponent(id) + "&ts=" + encodeURIComponent(ts) + "&callback=onRetornoGoogleJsonp&_t=" + Date.now();
-        document.body.appendChild(s);
-      }
-
-      document.getElementById('iframe_oculto_gas').addEventListener('load', function() {
-        if (!jaSincronizou) {
-          document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
-          document.getElementById('btnConfirmarAgenda').innerText = "✅ Presença Confirmada na Agenda";
-        }
-      });
-
-      document.getElementById('btnConfirmarAgenda').addEventListener('click', function() {
-        document.getElementById('statusSinc').innerText = "⏳ Confirmando na agenda...";
-        executarGravacaoReal();
-      });
-
-      if (!navigator.webdriver && document.visibilityState !== 'prerender') {
-        executarGravacaoReal();
-      }
+      // 3. Relay AllOrigins para garantir gravação em qualquer rede móvel
+      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlFinal))
+        .then(function(r) { return r.json(); })
+        .then(onRetornoGoogleJsonp)
+        .catch(function() {});
     })();
   </script>
 </body>

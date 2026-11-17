@@ -68,7 +68,7 @@
       font-weight: 600;
       color: #2e6f40;
       background: #eaf4ec;
-      padding: 5px 14px;
+      padding: 6px 14px;
       border-radius: 20px;
       margin-bottom: 16px;
     }
@@ -98,6 +98,14 @@
       font-size: 14.5px;
       font-weight: 600;
       text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-acao-agenda {
+      background: #16a34a;
+      color: #ffffff;
+      box-shadow: 0 6px 15px rgba(22, 163, 74, 0.25);
     }
     .btn-primario {
       background: #4a6b56;
@@ -138,15 +146,16 @@
       <div class="badge-status">✅</div>
       <h1>Presença Confirmada!</h1>
       <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando agenda em tempo real...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
-        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Carregando...</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Localizando...</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Localizando...</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
       <div class="botoes-bio">
+        <button id="btnReforcar" class="btn btn-acao-agenda" type="button" style="display:none;">✅ Confirmar na Agenda Agora</button>
         <a class="btn btn-primario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
         <a class="btn btn-secundario" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">💬 Falar conosco no WhatsApp</a>
       </div>
@@ -170,6 +179,8 @@
       const pacUrl = params.get('pac') || '';
       const dhUrl = params.get('dh') || '';
 
+      var sincronizado = false;
+
       function preencherDados(nomePac, textoDh) {
         if (nomePac && nomePac !== "Paciente") {
           document.getElementById('lblPaciente').innerText = nomePac;
@@ -179,7 +190,7 @@
         }
         var pAtual = document.getElementById('lblPaciente').innerText;
         var dAtual = document.getElementById('lblDataHora').innerText;
-        if (pAtual !== "Carregando..." && dAtual !== "Carregando...") {
+        if (pAtual !== "Localizando..." && dAtual !== "Localizando...") {
           document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pAtual + " para o atendimento de " + dAtual + ".");
         }
       }
@@ -188,63 +199,80 @@
         preencherDados(pacUrl, dhUrl);
       }
 
-      if (navigator.webdriver || document.visibilityState === 'prerender') return;
-
-      var jaExecutou = false;
-      function gravarNaAgenda() {
-        if (jaExecutou) return;
-        jaExecutou = true;
-
-        var urlFinal = GAS_URL + "?rota=registrar&acao=confirmar&clique=sim";
-        if (cod) urlFinal += "&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod);
-        if (cal) urlFinal += "&cal=" + encodeURIComponent(cal);
-        if (id) urlFinal += "&id=" + encodeURIComponent(id);
-        if (ts) urlFinal += "&ts=" + encodeURIComponent(ts);
-        if (pacUrl) urlFinal += "&pac=" + encodeURIComponent(pacUrl);
-        if (dhUrl) urlFinal += "&dh=" + encodeURIComponent(dhUrl);
-        urlFinal += "&_t=" + Date.now();
-
-        // 1. Dispara via sendBeacon (sobrevive mesmo se o cliente fechar o WhatsApp imediatamente)
-        if (navigator.sendBeacon) {
-          try { navigator.sendBeacon(urlFinal); } catch (e) {}
-        }
-
-        // 2. Dispara fetch com keepalive para ler os dados do paciente e confirmar o status visual
-        fetch(urlFinal, {
-          method: "GET",
-          mode: "cors",
-          credentials: "omit",
-          keepalive: true,
-          redirect: "follow",
-          cache: "no-store"
-        })
-        .then(function(r) { return r.text(); })
-        .then(function(texto) {
-          try {
-            var res = JSON.parse(texto);
-            if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
-            if (res && res.ok) {
-              document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
-            } else {
-              document.getElementById('statusSinc').innerText = "✓ Confirmação registrada";
-            }
-          } catch (eJson) {
-            document.getElementById('statusSinc').innerText = "✓ Confirmação registrada";
+      function processarResposta(texto) {
+        if (sincronizado || !texto) return false;
+        try {
+          var res = JSON.parse(texto);
+          if (res && res.contents) {
+            res = JSON.parse(res.contents);
           }
-        })
-        .catch(function() {
-          // Fallback no-cors caso o WebView restrinja leitura da resposta
-          fetch(urlFinal, { mode: "no-cors", credentials: "omit", keepalive: true });
-          document.getElementById('statusSinc').innerText = "✓ Confirmação enviada à agenda";
-        });
+          if (res && (res.ok || res.paciente)) {
+            sincronizado = true;
+            preencherDados(res.paciente, res.dataHora);
+            document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
+            document.getElementById('btnReforcar').style.display = "none";
+            return true;
+          }
+        } catch (e) {}
+        return false;
       }
 
-      if (document.visibilityState === 'visible') {
-        gravarNaAgenda();
-      } else {
-        document.addEventListener('visibilitychange', function() {
-          if (document.visibilityState === 'visible') gravarNaAgenda();
-        }, { once: true });
+      function dispararCanaisDeSincronia() {
+        if (sincronizado) return;
+
+        var urlAlvo = GAS_URL + "?rota=registrar&acao=confirmar";
+        if (cod) urlAlvo += "&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod);
+        if (cal) urlAlvo += "&cal=" + encodeURIComponent(cal);
+        if (id) urlAlvo += "&id=" + encodeURIComponent(id);
+        if (ts) urlAlvo += "&ts=" + encodeURIComponent(ts);
+        if (pacUrl) urlAlvo += "&pac=" + encodeURIComponent(pacUrl);
+        if (dhUrl) urlAlvo += "&dh=" + encodeURIComponent(dhUrl);
+        urlAlvo += "&_t=" + Date.now();
+
+        // Canal 1: Servidor Relay AllOrigins (Imune ao bloqueio do iPhone/Safari)
+        fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 2: Servidor Relay AllOrigins JSON Wrapper
+        fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 3: Servidor Relay CodeTabs
+        fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 4: Servidor Relay CorsProxy
+        fetch("https://corsproxy.io/?" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 5: Chamada Direta limpa sem cabeçalhos extras
+        fetch(urlAlvo, { method: "GET", credentials: "omit" })
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+      }
+
+      document.getElementById('btnReforcar').addEventListener('click', function() {
+        document.getElementById('statusSinc').innerText = "⏳ Confirmando na agenda...";
+        dispararCanaisDeSincronia();
+      });
+
+      if (!navigator.webdriver && document.visibilityState !== 'prerender') {
+        dispararCanaisDeSincronia();
+        setTimeout(function() {
+          if (!sincronizado) {
+            dispararCanaisDeSincronia();
+            document.getElementById('btnReforcar').style.display = "block";
+          }
+        }, 2500);
       }
     })();
   </script>

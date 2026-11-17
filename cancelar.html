@@ -68,7 +68,7 @@
       font-weight: 600;
       color: #b94a48;
       background: #fdf0ef;
-      padding: 5px 14px;
+      padding: 6px 14px;
       border-radius: 20px;
       margin-bottom: 16px;
     }
@@ -98,6 +98,14 @@
       font-size: 14.5px;
       font-weight: 600;
       text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-acao-cancelar {
+      background: #dc2626;
+      color: #ffffff;
+      box-shadow: 0 6px 15px rgba(220, 38, 38, 0.25);
     }
     .btn-reagendar {
       background: #25d366;
@@ -138,15 +146,16 @@
       <div class="badge-status">💛</div>
       <h1>Ausência Registrada</h1>
       <p class="texto-acolhedor">Agradecemos por nos avisar com antecedência! O cuidado contínuo faz toda a diferença.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando agenda em tempo real...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
-        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Carregando...</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Localizando...</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Localizando...</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
       <div class="botoes-bio">
+        <button id="btnReforcar" class="btn btn-acao-cancelar" type="button" style="display:none;">❌ Confirmar Ausência na Agenda</button>
         <a class="btn btn-reagendar" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">📅 Solicitar Reagendamento no WhatsApp</a>
         <a class="btn btn-secundario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
       </div>
@@ -170,6 +179,8 @@
       const pacUrl = params.get('pac') || '';
       const dhUrl = params.get('dh') || '';
 
+      var sincronizado = false;
+
       function preencherDados(nomePac, textoDh) {
         if (nomePac && nomePac !== "Paciente") {
           document.getElementById('lblPaciente').innerText = nomePac;
@@ -179,7 +190,7 @@
         }
         var pAtual = document.getElementById('lblPaciente').innerText;
         var dAtual = document.getElementById('lblDataHora').innerText;
-        if (pAtual !== "Carregando..." && dAtual !== "Carregando...") {
+        if (pAtual !== "Localizando..." && dAtual !== "Localizando...") {
           document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pAtual + " não poderá comparecer ao atendimento de " + dAtual + ". Gostaria de verificar um novo horário para reagendar.");
         }
       }
@@ -188,60 +199,80 @@
         preencherDados(pacUrl, dhUrl);
       }
 
-      if (navigator.webdriver || document.visibilityState === 'prerender') return;
-
-      var jaExecutou = false;
-      function gravarCancelamentoNaAgenda() {
-        if (jaExecutou) return;
-        jaExecutou = true;
-
-        var urlFinal = GAS_URL + "?rota=registrar&acao=cancelar&clique=sim";
-        if (cod) urlFinal += "&c=" + encodeURIComponent(cod) + "&n=" + encodeURIComponent(cod);
-        if (cal) urlFinal += "&cal=" + encodeURIComponent(cal);
-        if (id) urlFinal += "&id=" + encodeURIComponent(id);
-        if (ts) urlFinal += "&ts=" + encodeURIComponent(ts);
-        if (pacUrl) urlFinal += "&pac=" + encodeURIComponent(pacUrl);
-        if (dhUrl) urlFinal += "&dh=" + encodeURIComponent(dhUrl);
-        urlFinal += "&_t=" + Date.now();
-
-        if (navigator.sendBeacon) {
-          try { navigator.sendBeacon(urlFinal); } catch (e) {}
-        }
-
-        fetch(urlFinal, {
-          method: "GET",
-          mode: "cors",
-          credentials: "omit",
-          keepalive: true,
-          redirect: "follow",
-          cache: "no-store"
-        })
-        .then(function(r) { return r.text(); })
-        .then(function(texto) {
-          try {
-            var res = JSON.parse(texto);
-            if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
-            if (res && res.ok) {
-              document.getElementById('statusSinc').innerText = "✓ Ausência registrada na agenda da Casa IRIS";
-            } else {
-              document.getElementById('statusSinc').innerText = "✓ Ausência registrada";
-            }
-          } catch (eJson) {
-            document.getElementById('statusSinc').innerText = "✓ Ausência registrada";
+      function processarResposta(texto) {
+        if (sincronizado || !texto) return false;
+        try {
+          var res = JSON.parse(texto);
+          if (res && res.contents) {
+            res = JSON.parse(res.contents);
           }
-        })
-        .catch(function() {
-          fetch(urlFinal, { mode: "no-cors", credentials: "omit", keepalive: true });
-          document.getElementById('statusSinc').innerText = "✓ Aviso enviado à agenda";
-        });
+          if (res && (res.ok || res.paciente)) {
+            sincronizado = true;
+            preencherDados(res.paciente, res.dataHora);
+            document.getElementById('statusSinc').innerText = "✓ Ausência registrada na agenda da Casa IRIS";
+            document.getElementById('btnReforcar').style.display = "none";
+            return true;
+          }
+        } catch (e) {}
+        return false;
       }
 
-      if (document.visibilityState === 'visible') {
-        gravarCancelamentoNaAgenda();
-      } else {
-        document.addEventListener('visibilitychange', function() {
-          if (document.visibilityState === 'visible') gravarCancelamentoNaAgenda();
-        }, { once: true });
+      function dispararCanaisDeSincronia() {
+        if (sincronizado) return;
+
+        var urlAlvo = GAS_URL + "?rota=registrar&acao=cancelar";
+        if (cod) urlAlvo += "&c=" + encodeURIComponent(cod) + "&n=" + encodeURIComponent(cod);
+        if (cal) urlAlvo += "&cal=" + encodeURIComponent(cal);
+        if (id) urlAlvo += "&id=" + encodeURIComponent(id);
+        if (ts) urlAlvo += "&ts=" + encodeURIComponent(ts);
+        if (pacUrl) urlAlvo += "&pac=" + encodeURIComponent(pacUrl);
+        if (dhUrl) urlAlvo += "&dh=" + encodeURIComponent(dhUrl);
+        urlAlvo += "&_t=" + Date.now();
+
+        // Canal 1: Servidor Relay AllOrigins
+        fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 2: Servidor Relay AllOrigins JSON Wrapper
+        fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 3: Servidor Relay CodeTabs
+        fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 4: Servidor Relay CorsProxy
+        fetch("https://corsproxy.io/?" + encodeURIComponent(urlAlvo))
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+
+        // Canal 5: Chamada Direta limpa
+        fetch(urlAlvo, { method: "GET", credentials: "omit" })
+          .then(function(r) { return r.text(); })
+          .then(processarResposta)
+          .catch(function() {});
+      }
+
+      document.getElementById('btnReforcar').addEventListener('click', function() {
+        document.getElementById('statusSinc').innerText = "⏳ Registrando ausência na agenda...";
+        dispararCanaisDeSincronia();
+      });
+
+      if (!navigator.webdriver && document.visibilityState !== 'prerender') {
+        dispararCanaisDeSincronia();
+        setTimeout(function() {
+          if (!sincronizado) {
+            dispararCanaisDeSincronia();
+            document.getElementById('btnReforcar').style.display = "block";
+          }
+        }, 2500);
       }
     })();
   </script>

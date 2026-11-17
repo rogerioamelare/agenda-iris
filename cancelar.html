@@ -141,7 +141,7 @@
       <div class="badge-status">💛</div>
       <h1>Ausência Registrada</h1>
       <p class="texto-acolhedor">Agradecemos por nos avisar com antecedência! O cuidado contínuo faz toda a diferença.</p>
-      <div id="statusSinc" class="status-sincronia">✓ Ausência registrada na agenda Casa IRIS</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
 
       <div class="card-agendamento">
         <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Registrado</span></span></div>
@@ -162,24 +162,15 @@
     </div>
   </div>
 
-  <iframe name="iframe_oculto_gas" style="display:none;"></iframe>
-  <form id="form_oculto_gas" method="GET" target="iframe_oculto_gas" style="display:none;">
-    <input type="hidden" name="rota" value="registrar">
-    <input type="hidden" name="acao" value="cancelar">
-    <input type="hidden" name="c" id="inp_c" value="">
-    <input type="hidden" name="n" id="inp_n" value="">
-    <input type="hidden" name="p" id="inp_p" value="">
-    <input type="hidden" name="h" id="inp_h" value="">
-  </form>
-
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
+    var canceladoOk = false;
 
     function preencherDados(nomePac, textoDh) {
       if (nomePac && nomePac !== "Paciente") {
         document.getElementById('lblPaciente').innerText = nomePac;
       }
-      if (textoDh && textoDh !== "Conforme agendado") {
+      if (textoDh && textoDh !== "Horário agendado") {
         document.getElementById('lblDataHora').innerText = textoDh.replace("_", " às ");
       }
       var pAtual = document.getElementById('lblPaciente').innerText;
@@ -187,43 +178,63 @@
       document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pAtual + " não poderá comparecer ao atendimento de " + dAtual + ". Gostaria de verificar um novo horário para reagendar.");
     }
 
-    function onRetornoCancelamentoJsonp(res) {
-      if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
+    function onRetornoCancelamento(res) {
+      if (!res) return;
+      if (res.paciente) preencherDados(res.paciente, res.dataHora);
+      if (res.ok) {
+        canceladoOk = true;
+        document.getElementById('statusSinc').innerText = "✓ Ausência registrada na agenda da Casa IRIS";
+      }
     }
 
     (function() {
       const params = new URLSearchParams(window.location.search);
       const cod = params.get('c') || params.get('n') || '';
+      const cal = params.get('cal') || '';
+      const id = params.get('id') || '';
+      const ts = params.get('ts') || '';
       const pacUrl = params.get('p') || params.get('pac') || '';
       const dhUrl = params.get('h') || params.get('dh') || '';
 
-      // Exibe o nome e o horário IMEDIATAMENTE ao abrir a tela
-      if (pacUrl || dhUrl) {
-        preencherDados(pacUrl, dhUrl);
-      }
+      if (pacUrl || dhUrl) preencherDados(pacUrl, dhUrl);
 
       if (navigator.webdriver || document.visibilityState === 'prerender') return;
 
-      var urlFinal = GAS_URL + "?rota=registrar&acao=cancelar&c=" + encodeURIComponent(cod) + "&n=" + encodeURIComponent(cod) + "&p=" + encodeURIComponent(pacUrl) + "&h=" + encodeURIComponent(dhUrl) + "&_t=" + Date.now();
+      var query = "?rota=registrar&acao=cancelar" +
+        "&c=" + encodeURIComponent(cod) +
+        "&n=" + encodeURIComponent(cod) +
+        "&cal=" + encodeURIComponent(cal) +
+        "&id=" + encodeURIComponent(id) +
+        "&ts=" + encodeURIComponent(ts) +
+        "&p=" + encodeURIComponent(pacUrl) +
+        "&h=" + encodeURIComponent(dhUrl) +
+        "&_t=" + Date.now();
 
-      try {
-        var form = document.getElementById('form_oculto_gas');
-        form.action = GAS_URL;
-        document.getElementById('inp_c').value = cod;
-        document.getElementById('inp_n').value = cod;
-        document.getElementById('inp_p').value = pacUrl;
-        document.getElementById('inp_h').value = dhUrl;
-        form.submit();
-      } catch (e) {}
+      var urlFinal = GAS_URL + query;
 
+      // CANAL 1: Ping HTTP via Imagem
+      var imgPing = new Image();
+      imgPing.referrerPolicy = "no-referrer";
+      imgPing.src = urlFinal + "&ping=1";
+
+      // CANAL 2: Script JSONP
       var s = document.createElement('script');
-      s.src = urlFinal + "&callback=onRetornoCancelamentoJsonp";
+      s.src = urlFinal + "&callback=onRetornoCancelamento";
       document.body.appendChild(s);
 
-      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlFinal))
-        .then(function(r) { return r.json(); })
-        .then(onRetornoCancelamentoJsonp)
-        .catch(function() {});
+      // CANAL 3: Fetch GET sem cookies
+      fetch(urlFinal, {
+        method: "GET",
+        mode: "no-cors",
+        credentials: "omit",
+        cache: "no-store"
+      }).then(function() {
+        setTimeout(function() {
+          if (!canceladoOk) {
+            document.getElementById('statusSinc').innerText = "✓ Aviso de ausência enviado para a Casa IRIS";
+          }
+        }, 1200);
+      }).catch(function() {});
     })();
   </script>
 </body>

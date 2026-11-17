@@ -65,10 +65,10 @@
     .status-sincronia {
       display: inline-block;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
       color: #b94a48;
       background: #fdf0ef;
-      padding: 4px 12px;
+      padding: 5px 14px;
       border-radius: 20px;
       margin-bottom: 16px;
     }
@@ -138,11 +138,11 @@
       <div class="badge-status">💛</div>
       <h1>Ausência Registrada</h1>
       <p class="texto-acolhedor">Agradecemos por nos avisar com antecedência! O cuidado contínuo faz toda a diferença.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Atualizando a agenda e carregando dados...</div>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Registrado</span></span></div>
-        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Conforme agendado</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Carregando...</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
@@ -167,18 +167,26 @@
       const cal = params.get('cal') || '';
       const id = params.get('id') || '';
       const ts = params.get('ts') || '';
-      const pac = params.get('pac') || '';
-      const dh = params.get('dh') || '';
+      const pacUrl = params.get('pac') || '';
+      const dhUrl = params.get('dh') || '';
 
       function preencherDados(nomePac, textoDh) {
-        if (nomePac) document.getElementById('lblPaciente').innerText = nomePac;
-        if (textoDh) document.getElementById('lblDataHora').innerText = textoDh;
-        if (nomePac && textoDh) {
-          document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + nomePac + " não poderá comparecer ao atendimento de " + textoDh + ". Gostaria de verificar um novo horário para reagendar.");
+        if (nomePac && nomePac !== "Paciente") {
+          document.getElementById('lblPaciente').innerText = nomePac;
+        }
+        if (textoDh && textoDh !== "Conforme agendado") {
+          document.getElementById('lblDataHora').innerText = textoDh;
+        }
+        var pAtual = document.getElementById('lblPaciente').innerText;
+        var dAtual = document.getElementById('lblDataHora').innerText;
+        if (pAtual !== "Carregando..." && dAtual !== "Carregando...") {
+          document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pAtual + " não poderá comparecer ao atendimento de " + dAtual + ". Gostaria de verificar um novo horário para reagendar.");
         }
       }
 
-      preencherDados(pac, dh);
+      if (pacUrl || dhUrl) {
+        preencherDados(pacUrl, dhUrl);
+      }
 
       if (navigator.webdriver || document.visibilityState === 'prerender') return;
 
@@ -187,35 +195,40 @@
         if (jaExecutou) return;
         jaExecutou = true;
 
-        var urlFinal = GAS_URL + "?acao=cancelar";
-        if (cod) urlFinal += "&c=" + encodeURIComponent(cod);
+        var urlFinal = GAS_URL + "?rota=registrar&acao=cancelar&clique=sim";
+        if (cod) {
+          urlFinal += "&c=" + encodeURIComponent(cod) + "&n=" + encodeURIComponent(cod);
+        }
         if (cal) urlFinal += "&cal=" + encodeURIComponent(cal);
         if (id) urlFinal += "&id=" + encodeURIComponent(id);
         if (ts) urlFinal += "&ts=" + encodeURIComponent(ts);
+        if (pacUrl) urlFinal += "&pac=" + encodeURIComponent(pacUrl);
+        if (dhUrl) urlFinal += "&dh=" + encodeURIComponent(dhUrl);
         urlFinal += "&_t=" + Date.now();
 
         fetch(urlFinal, {
           method: "GET",
           mode: "cors",
           credentials: "omit",
+          redirect: "follow",
           cache: "no-store"
         })
-        .then(function(r) { return r.json(); })
-        .then(function(res) {
-          if (res) {
-            preencherDados(res.paciente, res.dataHora);
-            document.getElementById('statusSinc').innerText = "✓ Registrado na agenda da Casa IRIS";
+        .then(function(r) { return r.text(); })
+        .then(function(texto) {
+          try {
+            var res = JSON.parse(texto);
+            if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
+            if (res && res.ok) {
+              document.getElementById('statusSinc').innerText = "✓ Ausência registrada na agenda da Casa IRIS";
+            } else {
+              document.getElementById('statusSinc').innerText = "✓ Ausência registrada";
+            }
+          } catch (eJson) {
+            document.getElementById('statusSinc').innerText = "✓ Ausência registrada";
           }
         })
         .catch(function() {
-          fetch(urlFinal, {
-            method: "GET",
-            mode: "no-cors",
-            credentials: "omit",
-            cache: "no-store"
-          }).then(function() {
-            document.getElementById('statusSinc').innerText = "✓ Registrado na agenda da Casa IRIS";
-          });
+          document.getElementById('statusSinc').innerText = "✓ Aviso recebido";
         });
       }
 

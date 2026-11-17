@@ -42,3 +42,171 @@
       text-transform: uppercase;
       padding: 5px 14px;
       border-radius: 50px;
+      margin-bottom: 8px;
+    }
+    .nome-clinica { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    .sub-clinica { font-size: 12.5px; opacity: 0.9; font-weight: 400; margin-top: 2px; }
+    .corpo { padding: 26px 22px 28px; }
+    .badge-status {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: #eaf4ec;
+      border: 2px solid #cfe6d4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: -52px auto 14px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+    }
+    h1 { color: #2e6f40; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .texto-acolhedor { color: #57635c; font-size: 14px; line-height: 1.55; margin-bottom: 20px; }
+    .card-agendamento {
+      background: #eaf4ec;
+      border: 1px solid #cfe6d4;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .linha-dado {
+      font-size: 14px;
+      color: #2c3531;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .linha-dado:last-child { margin-bottom: 0; }
+    .botoes-bio { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-size: 14.5px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .btn-primario {
+      background: #4a6b56;
+      color: #ffffff;
+      box-shadow: 0 6px 15px rgba(74, 107, 86, 0.22);
+    }
+    .btn-secundario {
+      background: #f4f6f4;
+      color: #3d5a47;
+      border: 1px solid #dce3dd;
+    }
+    .rodape-endereco {
+      margin-top: 22px;
+      padding-top: 16px;
+      border-top: 1px dashed #e2e8e4;
+      font-size: 12px;
+      color: #76827b;
+      line-height: 1.6;
+    }
+    .assinatura-profissional {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #94a39b;
+      font-weight: 500;
+    }
+    .link-bio { color: #4a6b56; font-weight: 600; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="bio-container">
+    <div class="topo-iris">
+      <div class="selo-iris">Espaço de Cuidado</div>
+      <div class="nome-clinica">Casa IRIS</div>
+      <div class="sub-clinica">Neurodiversidade e Conhecimento</div>
+    </div>
+
+    <div class="corpo">
+      <div class="badge-status">✅</div>
+      <h1>Presença Confirmada!</h1>
+      <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
+
+      <div class="card-agendamento">
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Confirmado</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Conforme agendado</span></span></div>
+        <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
+      </div>
+
+      <div class="botoes-bio">
+        <a class="btn btn-primario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
+        <a class="btn btn-secundario" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">💬 Falar conosco no WhatsApp</a>
+      </div>
+
+      <div class="rodape-endereco">
+        Casa IRIS • CNPJ: 37.900.844/0001-07<br>
+        <a class="link-bio" href="https://www.nossacasairis.com.br" target="_blank">www.nossacasairis.com.br</a>
+        <div class="assinatura-profissional">Rogério Arruda Melaré • CREFITO/3 69258-F</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function atualizarDadosPaciente(res) {
+      if (!res) return;
+      if (res.paciente) document.getElementById('lblPaciente').innerText = res.paciente;
+      if (res.dataHora) document.getElementById('lblDataHora').innerText = res.dataHora;
+      if (res.paciente && res.dataHora) {
+        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + res.paciente + " para o atendimento de " + res.dataHora + ".");
+      }
+    }
+
+    (function() {
+      const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
+      const params = new URLSearchParams(window.location.search);
+      const cod = params.get('c') || params.get('s') || '';
+      const cal = params.get('cal') || '';
+      const id = params.get('id') || '';
+      const ts = params.get('ts') || '';
+      const pac = params.get('pac') || '';
+      const dh = params.get('dh') || '';
+
+      if (pac || dh) {
+        atualizarDadosPaciente({ paciente: pac, dataHora: dh });
+      }
+
+      if (navigator.webdriver || document.visibilityState === 'prerender') return;
+
+      var jaEnviou = false;
+      function dispararAtualizacaoAgenda() {
+        if (jaEnviou) return;
+        jaEnviou = true;
+
+        var query = "?rota=registrar&acao=confirmar&callback=atualizarDadosPaciente";
+        if (cod) {
+          query += "&c=" + encodeURIComponent(cod);
+        } else if (cal && id) {
+          query += "&cal=" + encodeURIComponent(cal) + "&id=" + encodeURIComponent(id) + "&ts=" + encodeURIComponent(ts);
+        } else {
+          return;
+        }
+
+        // Método 1: Script JSONP (recebe o nome do paciente e atualiza a agenda sem bloqueio de CORS)
+        var s = document.createElement('script');
+        s.src = GAS_URL + query + "&_t=" + Date.now();
+        s.onerror = function() {
+          // Método 2 (Backup): Ping de imagem invisível caso o navegador bloqueie scripts externos
+          var img = new Image();
+          img.src = GAS_URL + query.replace("&callback=atualizarDadosPaciente", "") + "&_img=" + Date.now();
+        };
+        document.body.appendChild(s);
+      }
+
+      if (document.visibilityState === 'visible') {
+        dispararAtualizacaoAgenda();
+      } else {
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') dispararAtualizacaoAgenda();
+        }, { once: true });
+      }
+    })();
+  </script>
+</body>
+</html>

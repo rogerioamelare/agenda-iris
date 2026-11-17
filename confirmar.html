@@ -138,11 +138,11 @@
       <div class="badge-status">✅</div>
       <h1>Presença Confirmada!</h1>
       <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Gravando confirmação na agenda...</div>
 
       <div class="card-agendamento">
-        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Confirmado</span></span></div>
-        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Horário agendado</span></span></div>
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Carregando...</span></span></div>
         <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
       </div>
 
@@ -161,83 +161,62 @@
 
   <script>
     const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
-    var confirmadoOk = false;
+    var jaGravou = false;
 
-    function preencherDados(nomePac, textoDh) {
-      if (nomePac && nomePac !== "Paciente") {
-        document.getElementById('lblPaciente').innerText = nomePac;
-      }
-      if (textoDh && textoDh !== "Horário agendado") {
-        document.getElementById('lblDataHora').innerText = textoDh.replace("_", " às ");
-      }
-      var pAtual = document.getElementById('lblPaciente').innerText;
-      var dAtual = document.getElementById('lblDataHora').innerText;
-      document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pAtual + " para o atendimento de " + dAtual + ".");
+    function preencherTela(pac, dh) {
+      if (pac) document.getElementById('lblPaciente').innerText = pac;
+      if (dh) document.getElementById('lblDataHora').innerText = dh.replace("_", " às ");
+      var p = document.getElementById('lblPaciente').innerText;
+      var d = document.getElementById('lblDataHora').innerText;
+      document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + p + " para o atendimento de " + d + ".");
     }
 
-    function processarRetorno(texto) {
-      if (confirmadoOk || !texto) return;
+    function onRespostaServidor(dados) {
+      if (jaGravou || !dados) return;
       try {
-        var res = (typeof texto === "string") ? JSON.parse(texto) : texto;
+        var res = (typeof dados === "string") ? JSON.parse(dados) : dados;
         if (res && res.contents) res = JSON.parse(res.contents);
-        if (res && res.paciente) preencherDados(res.paciente, res.dataHora);
+        if (res && res.paciente) preencherTela(res.paciente, res.dataHora);
         if (res && res.ok) {
-          confirmadoOk = true;
-          document.getElementById('statusSinc').innerText = "✓ Confirmado na agenda da Casa IRIS";
+          jaGravou = true;
+          document.getElementById('statusSinc').innerText = "✅ Gravado com sucesso na agenda Casa IRIS!";
+        } else if (res && res.erro) {
+          document.getElementById('statusSinc').innerText = "⚠️ " + res.erro;
         }
       } catch (e) {}
     }
 
     (function() {
       const params = new URLSearchParams(window.location.search);
-      const cod = params.get('c') || params.get('s') || '';
-      const cal = params.get('cal') || '';
-      const id = params.get('id') || '';
+      const tel = params.get('tel') || '';
       const ts = params.get('ts') || '';
-      const pacUrl = params.get('p') || params.get('pac') || '';
-      const dhUrl = params.get('h') || params.get('dh') || '';
+      const p = params.get('p') || '';
+      const h = params.get('h') || '';
 
-      if (pacUrl || dhUrl) preencherDados(pacUrl, dhUrl);
+      if (p || h) preencherTela(p, h);
 
-      var query = "?rota=registrar&acao=confirmar" +
-        "&c=" + encodeURIComponent(cod) +
-        "&s=" + encodeURIComponent(cod) +
-        "&cal=" + encodeURIComponent(cal) +
-        "&id=" + encodeURIComponent(id) +
+      var urlAlvo = GAS_URL +
+        "?rota=atualizar&acao=confirmar" +
+        "&tel=" + encodeURIComponent(tel) +
         "&ts=" + encodeURIComponent(ts) +
-        "&p=" + encodeURIComponent(pacUrl) +
-        "&h=" + encodeURIComponent(dhUrl) +
+        "&p=" + encodeURIComponent(p) +
         "&_t=" + Date.now();
 
-      var urlAlvo = GAS_URL + query;
-
-      // 1. Relay AllOrigins Raw (Servidor Linux -> Google, sem bloqueio de cookies do iPhone)
-      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlAlvo))
-        .then(function(r) { return r.text(); })
-        .then(processarRetorno)
-        .catch(function() {});
-
-      // 2. Relay AllOrigins Get
-      fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(urlAlvo))
-        .then(function(r) { return r.text(); })
-        .then(processarRetorno)
-        .catch(function() {});
-
-      // 3. Relay CodeTabs
-      fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(urlAlvo))
-        .then(function(r) { return r.text(); })
-        .then(processarRetorno)
-        .catch(function() {});
-
-      // 4. Fetch GET direto sem cookies
+      // 1. Chamada Direta sem cookies
       fetch(urlAlvo, { method: "GET", mode: "cors", credentials: "omit", cache: "no-store" })
         .then(function(r) { return r.text(); })
-        .then(processarRetorno)
+        .then(onRespostaServidor)
         .catch(function() {});
 
-      // 5. Script JSONP
+      // 2. Relay AllOrigins (Servidor Linux -> Google)
+      fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(urlAlvo))
+        .then(function(r) { return r.text(); })
+        .then(onRespostaServidor)
+        .catch(function() {});
+
+      // 3. Script JSONP nativo
       var s = document.createElement('script');
-      s.src = urlAlvo + "&callback=processarRetorno";
+      s.src = urlAlvo + "&callback=onRespostaServidor";
       document.body.appendChild(s);
     })();
   </script>

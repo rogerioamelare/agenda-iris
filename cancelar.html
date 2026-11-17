@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ausência Registrada • Casa IRIS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(145deg, #f6f8f5 0%, #eae6df 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      color: #2c3531;
+    }
+    .bio-container {
+      background: #ffffff;
+      max-width: 420px;
+      width: 100%;
+      border-radius: 26px;
+      box-shadow: 0 18px 40px rgba(44, 53, 49, 0.09);
+      overflow: hidden;
+      text-align: center;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .topo-iris {
+      background: linear-gradient(135deg, #5c7c67 0%, #3d5a47 100%);
+      color: #ffffff;
+      padding: 26px 20px 22px;
+    }
+    .selo-iris {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.16);
+      color: #fef9e7;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 50px;
+      margin-bottom: 8px;
+    }
+    .nome-clinica {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+    .sub-clinica {
+      font-size: 12.5px;
+      opacity: 0.9;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+    .corpo {
+      padding: 26px 22px 28px;
+    }
+    .badge-status {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: #fdf0ef;
+      border: 2px solid #f5d0ce;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: -52px auto 14px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+    }
+    h1 {
+      color: #b94a48;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .texto-acolhedor {
+      color: #57635c;
+      font-size: 14px;
+      line-height: 1.55;
+      margin-bottom: 20px;
+    }
+    .card-agendamento {
+      background: #fdf0ef;
+      border: 1px solid #f5d0ce;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .linha-dado {
+      font-size: 14px;
+      color: #2c3531;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .linha-dado:last-child { margin-bottom: 0; }
+    .botoes-bio {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 14px;
+      font-size: 14.5px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform 0.15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-reagendar {
+      background: #25d366;
+      color: #ffffff;
+      box-shadow: 0 6px 15px rgba(37, 211, 102, 0.25);
+    }
+    .btn-secundario {
+      background: #f4f6f4;
+      color: #3d5a47;
+      border: 1px solid #dce3dd;
+    }
+    .rodape-endereco {
+      margin-top: 22px;
+      padding-top: 16px;
+      border-top: 1px dashed #e2e8e4;
+      font-size: 12px;
+      color: #76827b;
+      line-height: 1.6;
+    }
+    .assinatura-profissional {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #94a39b;
+      font-weight: 500;
+    }
+    .link-bio {
+      color: #4a6b56;
+      font-weight: 600;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bio-container">
+    <div class="topo-iris">
+      <div class="selo-iris">Espaço de Cuidado</div>
+      <div class="nome-clinica">Casa IRIS</div>
+      <div class="sub-clinica">Neurodiversidade e Conhecimento</div>
+    </div>
+
+    <div class="corpo">
+      <div class="badge-status">💛</div>
+      <h1>Ausência Registrada</h1>
+      <p class="texto-acolhedor">Agradecemos por nos avisar com antecedência! O cuidado contínuo faz toda a diferença.</p>
+
+      <div class="card-agendamento">
+        <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Registrado</span></span></div>
+        <div class="linha-dado">📅 <span><strong>Data e Hora:</strong> <span id="lblDataHora">Conforme agendado</span></span></div>
+        <div class="linha-dado">📍 <span><strong>Local:</strong> Rua Ângelo Elias, 673 – Sorocaba/SP</span></div>
+      </div>
+
+      <div class="botoes-bio">
+        <a class="btn btn-reagendar" id="btnWhats" href="https://wa.me/5515981310900" target="_blank" rel="noopener">📅 Solicitar Reagendamento no WhatsApp</a>
+        <a class="btn btn-secundario" href="https://www.nossacasairis.com.br" target="_blank" rel="noopener">🌐 Visitar Site Casa IRIS</a>
+      </div>
+
+      <div class="rodape-endereco">
+        Casa IRIS • CNPJ: 56.634.391/0001-30<br>
+        <a class="link-bio" href="https://www.nossacasairis.com.br" target="_blank">www.nossacasairis.com.br</a>
+        <div class="assinatura-profissional">Rogério Arruda Melaré • CREFITO/3 69258-F</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
+      const params = new URLSearchParams(window.location.search);
+      const cod = params.get('c') || params.get('n') || '';
+      const pacParam = params.get('pac');
+      const dhParam = params.get('dh');
+
+      function atualizarTela(pac, dh) {
+        if (pac) document.getElementById('lblPaciente').innerText = pac;
+        if (dh) document.getElementById('lblDataHora').innerText = dh;
+        if (pac && dh) {
+          document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pac + " não poderá comparecer ao atendimento de " + dh + ". Gostaria de verificar um novo horário para reagendar.");
+        }
+      }
+
+      if (pacParam || dhParam) {
+        atualizarTela(pacParam, dhParam);
+      }
+
+      if (navigator.webdriver || document.visibilityState === 'prerender') return;
+
+      function registrarCancelamento() {
+        if (cod) {
+          fetch(GAS_URL + "?rota=registrar&acao=cancelar&c=" + encodeURIComponent(cod))
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+              if (res && res.ok) atualizarTela(res.paciente, res.dataHora);
+            })
+            .catch(function() {
+              fetch(GAS_URL + "?rota=registrar&acao=cancelar&c=" + encodeURIComponent(cod), { mode: 'no-cors' });
+            });
+        }
+      }
+
+      if (document.visibilityState === 'visible') {
+        registrarCancelamento();
+      } else {
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') registrarCancelamento();
+        }, { once: true });
+      }
+    })();
+  </script>
+</body>
+</html>

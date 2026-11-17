@@ -61,7 +61,17 @@
       box-shadow: 0 6px 14px rgba(0,0,0,0.06);
     }
     h1 { color: #2e6f40; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-    .texto-acolhedor { color: #57635c; font-size: 14px; line-height: 1.55; margin-bottom: 20px; }
+    .texto-acolhedor { color: #57635c; font-size: 14px; line-height: 1.55; margin-bottom: 16px; }
+    .status-sincronia {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #2e6f40;
+      background: #eaf4ec;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
     .card-agendamento {
       background: #eaf4ec;
       border: 1px solid #cfe6d4;
@@ -128,6 +138,7 @@
       <div class="badge-status">✅</div>
       <h1>Presença Confirmada!</h1>
       <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando com a agenda...</div>
 
       <div class="card-agendamento">
         <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Confirmado</span></span></div>
@@ -149,18 +160,6 @@
   </div>
 
   <script>
-    var confirmouNoServidor = false;
-
-    function retornoServidorGoogle(res) {
-      confirmouNoServidor = true;
-      if (!res) return;
-      if (res.paciente) document.getElementById('lblPaciente').innerText = res.paciente;
-      if (res.dataHora) document.getElementById('lblDataHora').innerText = res.dataHora;
-      if (res.paciente && res.dataHora) {
-        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + res.paciente + " para o atendimento de " + res.dataHora + ".");
-      }
-    }
-
     (function() {
       const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
       const params = new URLSearchParams(window.location.search);
@@ -171,11 +170,15 @@
       const pac = params.get('pac') || '';
       const dh = params.get('dh') || '';
 
-      if (pac) document.getElementById('lblPaciente').innerText = pac;
-      if (dh) document.getElementById('lblDataHora').innerText = dh;
-      if (pac && dh) {
-        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + pac + " para o atendimento de " + dh + ".");
+      function preencherDados(nomePac, textoDh) {
+        if (nomePac) document.getElementById('lblPaciente').innerText = nomePac;
+        if (textoDh) document.getElementById('lblDataHora').innerText = textoDh;
+        if (nomePac && textoDh) {
+          document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Confirmei a presença de " + nomePac + " para o atendimento de " + textoDh + ".");
+        }
       }
+
+      preencherDados(pac, dh);
 
       if (navigator.webdriver || document.visibilityState === 'prerender') return;
 
@@ -184,28 +187,37 @@
         if (jaExecutou) return;
         jaExecutou = true;
 
-        var baseQuery = "?acao=confirmar";
-        if (cod) baseQuery += "&c=" + encodeURIComponent(cod);
-        if (cal) baseQuery += "&cal=" + encodeURIComponent(cal);
-        if (id) baseQuery += "&id=" + encodeURIComponent(id);
-        if (ts) baseQuery += "&ts=" + encodeURIComponent(ts);
-        if (pac) baseQuery += "&pac=" + encodeURIComponent(pac);
-        if (dh) baseQuery += "&dh=" + encodeURIComponent(dh);
+        var urlFinal = GAS_URL + "?acao=confirmar";
+        if (cod) urlFinal += "&c=" + encodeURIComponent(cod);
+        if (cal) urlFinal += "&cal=" + encodeURIComponent(cal);
+        if (id) urlFinal += "&id=" + encodeURIComponent(id);
+        if (ts) urlFinal += "&ts=" + encodeURIComponent(ts);
+        urlFinal += "&_t=" + Date.now();
 
-        if (!cod && !id) return;
-
-        // 1. Tenta via JSONP rápido em segundo plano
-        var script = document.createElement('script');
-        script.src = GAS_URL + baseQuery + "&formato=json&callback=retornoServidorGoogle&_t=" + Date.now();
-        document.body.appendChild(script);
-
-        // 2. Garantia absoluta: se o navegador do celular bloquear a chamada em segundo plano (ITP/Safari),
-        // faz a navegação direta após 1.2s para o Google Apps Script gravar e renderizar a mesma tela!
-        setTimeout(function() {
-          if (!confirmouNoServidor) {
-            window.location.replace(GAS_URL + baseQuery);
+        // credentials: 'omit' impede o envio de cookies do Safari/Google e evita o erro do Google Drive
+        fetch(urlFinal, {
+          method: "GET",
+          mode: "cors",
+          credentials: "omit",
+          cache: "no-store"
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (res) {
+            preencherDados(res.paciente, res.dataHora);
+            document.getElementById('statusSinc').innerText = "✓ Registrado na agenda da Casa IRIS";
           }
-        }, 1200);
+        })
+        .catch(function() {
+          fetch(urlFinal, {
+            method: "GET",
+            mode: "no-cors",
+            credentials: "omit",
+            cache: "no-store"
+          }).then(function() {
+            document.getElementById('statusSinc').innerText = "✓ Registrado na agenda da Casa IRIS";
+          });
+        });
       }
 
       if (document.visibilityState === 'visible') {

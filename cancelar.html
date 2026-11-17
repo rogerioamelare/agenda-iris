@@ -44,20 +44,9 @@
       border-radius: 50px;
       margin-bottom: 8px;
     }
-    .nome-clinica {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-    .sub-clinica {
-      font-size: 12.5px;
-      opacity: 0.9;
-      font-weight: 400;
-      margin-top: 2px;
-    }
-    .corpo {
-      padding: 26px 22px 28px;
-    }
+    .nome-clinica { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+    .sub-clinica { font-size: 12.5px; opacity: 0.9; font-weight: 400; margin-top: 2px; }
+    .corpo { padding: 26px 22px 28px; }
     .badge-status {
       width: 62px;
       height: 62px;
@@ -71,18 +60,8 @@
       margin: -52px auto 14px;
       box-shadow: 0 6px 14px rgba(0,0,0,0.06);
     }
-    h1 {
-      color: #b94a48;
-      font-size: 22px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .texto-acolhedor {
-      color: #57635c;
-      font-size: 14px;
-      line-height: 1.55;
-      margin-bottom: 20px;
-    }
+    h1 { color: #b94a48; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .texto-acolhedor { color: #57635c; font-size: 14px; line-height: 1.55; margin-bottom: 20px; }
     .card-agendamento {
       background: #fdf0ef;
       border: 1px solid #f5d0ce;
@@ -100,12 +79,7 @@
       gap: 8px;
     }
     .linha-dado:last-child { margin-bottom: 0; }
-    .botoes-bio {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 6px;
-    }
+    .botoes-bio { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
     .btn {
       display: block;
       width: 100%;
@@ -114,9 +88,7 @@
       font-size: 14.5px;
       font-weight: 600;
       text-decoration: none;
-      transition: transform 0.15s ease;
     }
-    .btn:active { transform: scale(0.98); }
     .btn-reagendar {
       background: #25d366;
       color: #ffffff;
@@ -141,11 +113,7 @@
       color: #94a39b;
       font-weight: 500;
     }
-    .link-bio {
-      color: #4a6b56;
-      font-weight: 600;
-      text-decoration: none;
-    }
+    .link-bio { color: #4a6b56; font-weight: 600; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -181,45 +149,59 @@
   </div>
 
   <script>
+    function atualizarDadosCancelamento(res) {
+      if (!res) return;
+      if (res.paciente) document.getElementById('lblPaciente').innerText = res.paciente;
+      if (res.dataHora) document.getElementById('lblDataHora').innerText = res.dataHora;
+      if (res.paciente && res.dataHora) {
+        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + res.paciente + " não poderá comparecer ao atendimento de " + res.dataHora + ". Gostaria de verificar um novo horário para reagendar.");
+      }
+    }
+
     (function() {
       const GAS_URL = "https://script.google.com/macros/s/AKfycbyQCbbMCin-d7LJ8dY76rcSiKhfb2ZEGD2P3mciCfbnBlc_HBXUDYE7vnYnvDt-GSrcGg/exec";
       const params = new URLSearchParams(window.location.search);
       const cod = params.get('c') || params.get('n') || '';
-      const pacParam = params.get('pac');
-      const dhParam = params.get('dh');
+      const cal = params.get('cal') || '';
+      const id = params.get('id') || '';
+      const ts = params.get('ts') || '';
+      const pac = params.get('pac') || '';
+      const dh = params.get('dh') || '';
 
-      function atualizarTela(pac, dh) {
-        if (pac) document.getElementById('lblPaciente').innerText = pac;
-        if (dh) document.getElementById('lblDataHora').innerText = dh;
-        if (pac && dh) {
-          document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pac + " não poderá comparecer ao atendimento de " + dh + ". Gostaria de verificar um novo horário para reagendar.");
-        }
-      }
-
-      if (pacParam || dhParam) {
-        atualizarTela(pacParam, dhParam);
+      if (pac || dh) {
+        atualizarDadosCancelamento({ paciente: pac, dataHora: dh });
       }
 
       if (navigator.webdriver || document.visibilityState === 'prerender') return;
 
-      function registrarCancelamento() {
+      var jaEnviou = false;
+      function dispararAtualizacaoAgenda() {
+        if (jaEnviou) return;
+        jaEnviou = true;
+
+        var query = "?rota=registrar&acao=cancelar&callback=atualizarDadosCancelamento";
         if (cod) {
-          fetch(GAS_URL + "?rota=registrar&acao=cancelar&c=" + encodeURIComponent(cod))
-            .then(function(r) { return r.json(); })
-            .then(function(res) {
-              if (res && res.ok) atualizarTela(res.paciente, res.dataHora);
-            })
-            .catch(function() {
-              fetch(GAS_URL + "?rota=registrar&acao=cancelar&c=" + encodeURIComponent(cod), { mode: 'no-cors' });
-            });
+          query += "&c=" + encodeURIComponent(cod);
+        } else if (cal && id) {
+          query += "&cal=" + encodeURIComponent(cal) + "&id=" + encodeURIComponent(id) + "&ts=" + encodeURIComponent(ts);
+        } else {
+          return;
         }
+
+        var s = document.createElement('script');
+        s.src = GAS_URL + query + "&_t=" + Date.now();
+        s.onerror = function() {
+          var img = new Image();
+          img.src = GAS_URL + query.replace("&callback=atualizarDadosCancelamento", "") + "&_img=" + Date.now();
+        };
+        document.body.appendChild(s);
       }
 
       if (document.visibilityState === 'visible') {
-        registrarCancelamento();
+        dispararAtualizacaoAgenda();
       } else {
         document.addEventListener('visibilitychange', function() {
-          if (document.visibilityState === 'visible') registrarCancelamento();
+          if (document.visibilityState === 'visible') dispararAtualizacaoAgenda();
         }, { once: true });
       }
     })();

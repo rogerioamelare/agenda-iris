@@ -138,7 +138,7 @@
       <div class="badge-status">✅</div>
       <h1>Presença Confirmada!</h1>
       <p class="texto-acolhedor">Que alegria! Estamos preparando tudo com muito carinho e cuidado para receber vocês.</p>
-      <div id="statusSinc" class="status-sincronia">⏳ Atualizando a agenda e carregando dados...</div>
+      <div id="statusSinc" class="status-sincronia">⏳ Sincronizando agenda em tempo real...</div>
 
       <div class="card-agendamento">
         <div class="linha-dado">👤 <span><strong>Paciente:</strong> <span id="lblPaciente">Carregando...</span></span></div>
@@ -195,11 +195,8 @@
         if (jaExecutou) return;
         jaExecutou = true;
 
-        // Envia rota=registrar + acao=confirmar + c + s para funcionar em qualquer versao publicada do Apps Script
         var urlFinal = GAS_URL + "?rota=registrar&acao=confirmar&clique=sim";
-        if (cod) {
-          urlFinal += "&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod);
-        }
+        if (cod) urlFinal += "&c=" + encodeURIComponent(cod) + "&s=" + encodeURIComponent(cod);
         if (cal) urlFinal += "&cal=" + encodeURIComponent(cal);
         if (id) urlFinal += "&id=" + encodeURIComponent(id);
         if (ts) urlFinal += "&ts=" + encodeURIComponent(ts);
@@ -207,10 +204,17 @@
         if (dhUrl) urlFinal += "&dh=" + encodeURIComponent(dhUrl);
         urlFinal += "&_t=" + Date.now();
 
+        // 1. Dispara via sendBeacon (sobrevive mesmo se o cliente fechar o WhatsApp imediatamente)
+        if (navigator.sendBeacon) {
+          try { navigator.sendBeacon(urlFinal); } catch (e) {}
+        }
+
+        // 2. Dispara fetch com keepalive para ler os dados do paciente e confirmar o status visual
         fetch(urlFinal, {
           method: "GET",
           mode: "cors",
           credentials: "omit",
+          keepalive: true,
           redirect: "follow",
           cache: "no-store"
         })
@@ -229,7 +233,9 @@
           }
         })
         .catch(function() {
-          document.getElementById('statusSinc').innerText = "✓ Confirmação recebida";
+          // Fallback no-cors caso o WebView restrinja leitura da resposta
+          fetch(urlFinal, { mode: "no-cors", credentials: "omit", keepalive: true });
+          document.getElementById('statusSinc').innerText = "✓ Confirmação enviada à agenda";
         });
       }
 

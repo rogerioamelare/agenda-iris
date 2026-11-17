@@ -149,7 +149,10 @@
   </div>
 
   <script>
-    function atualizarDadosCancelamento(res) {
+    var cancelouNoServidor = false;
+
+    function retornoCancelamentoGoogle(res) {
+      cancelouNoServidor = true;
       if (!res) return;
       if (res.paciente) document.getElementById('lblPaciente').innerText = res.paciente;
       if (res.dataHora) document.getElementById('lblDataHora').innerText = res.dataHora;
@@ -168,40 +171,48 @@
       const pac = params.get('pac') || '';
       const dh = params.get('dh') || '';
 
-      if (pac || dh) {
-        atualizarDadosCancelamento({ paciente: pac, dataHora: dh });
+      if (pac) document.getElementById('lblPaciente').innerText = pac;
+      if (dh) document.getElementById('lblDataHora').innerText = dh;
+      if (pac && dh) {
+        document.getElementById('btnWhats').href = "https://wa.me/5515981310900?text=" + encodeURIComponent("Olá! Registrei pelo link que " + pac + " não poderá comparecer ao atendimento de " + dh + ". Gostaria de verificar um novo horário para reagendar.");
       }
 
       if (navigator.webdriver || document.visibilityState === 'prerender') return;
 
-      var jaEnviou = false;
-      function dispararAtualizacaoAgenda() {
-        if (jaEnviou) return;
-        jaEnviou = true;
+      var jaExecutou = false;
+      function gravarCancelamentoNaAgenda() {
+        if (jaExecutou) return;
+        jaExecutou = true;
 
-        var query = "?rota=registrar&acao=cancelar&callback=atualizarDadosCancelamento";
-        if (cod) {
-          query += "&c=" + encodeURIComponent(cod);
-        } else if (cal && id) {
-          query += "&cal=" + encodeURIComponent(cal) + "&id=" + encodeURIComponent(id) + "&ts=" + encodeURIComponent(ts);
-        } else {
-          return;
-        }
+        var baseQuery = "?acao=cancelar";
+        if (cod) baseQuery += "&c=" + encodeURIComponent(cod);
+        if (cal) baseQuery += "&cal=" + encodeURIComponent(cal);
+        if (id) baseQuery += "&id=" + encodeURIComponent(id);
+        if (ts) baseQuery += "&ts=" + encodeURIComponent(ts);
+        if (pac) baseQuery += "&pac=" + encodeURIComponent(pac);
+        if (dh) baseQuery += "&dh=" + encodeURIComponent(dh);
 
-        var s = document.createElement('script');
-        s.src = GAS_URL + query + "&_t=" + Date.now();
-        s.onerror = function() {
-          var img = new Image();
-          img.src = GAS_URL + query.replace("&callback=atualizarDadosCancelamento", "") + "&_img=" + Date.now();
-        };
-        document.body.appendChild(s);
+        if (!cod && !id) return;
+
+        // 1. Tenta via JSONP rápido em segundo plano
+        var script = document.createElement('script');
+        script.src = GAS_URL + baseQuery + "&formato=json&callback=retornoCancelamentoGoogle&_t=" + Date.now();
+        document.body.appendChild(script);
+
+        // 2. Garantia absoluta: se o navegador do celular bloquear a chamada em segundo plano,
+        // redireciona em 1.2s para o Google Apps Script gravar e exibir a tela idêntica!
+        setTimeout(function() {
+          if (!cancelouNoServidor) {
+            window.location.replace(GAS_URL + baseQuery);
+          }
+        }, 1200);
       }
 
       if (document.visibilityState === 'visible') {
-        dispararAtualizacaoAgenda();
+        gravarCancelamentoNaAgenda();
       } else {
         document.addEventListener('visibilitychange', function() {
-          if (document.visibilityState === 'visible') dispararAtualizacaoAgenda();
+          if (document.visibilityState === 'visible') gravarCancelamentoNaAgenda();
         }, { once: true });
       }
     })();
